@@ -1,2 +1,2 @@
-# Human-Elbow-Angle-Tracking-Using-Wearable-Inertial-Measurement-Units-
-This project aims to develop and evaluate techniques for accurate elbow angle estimation IMUs
+# Elbow-Angle-Joint-Tracking-With-Wearable-Inertial-Measurement-Units-
+This project developed a wearable elbow angle estimation system using two IMU sensors and an ESP32-S2 microcontroller, communicating via Micro-ROS with ROS 2. After comparing three sensor fusion techniques, the Madgwick filter was selected for its superior accuracy and stability. The system was validated through both controlled flat surface experiments and human arm trials.
