@@ -10,7 +10,7 @@ def generate_launch_description():
             executable='complementary_filter_node',
             name='imu1_filter',
             parameters=[{
-                'use_mag': True,
+                'use_mag': False,
                 'publish_tf': False,
                 'fixed_frame': 'odom',
                 'remove_gravity_vector': True,
@@ -27,7 +27,7 @@ def generate_launch_description():
             executable='complementary_filter_node',
             name='imu2_filter',
             parameters=[{
-                'use_mag': True,
+                'use_mag': False,
                 'publish_tf': False,
                 'fixed_frame': 'odom',
                 'remove_gravity_vector': True,

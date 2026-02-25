@@ -14,7 +14,7 @@ def quaternion_array(q):
     ], dtype=float)
     return q_array
 
-def quartenion_conj(q):
+def quarternion_conj(q):
     return np.array([q[0], -q[1], -q[2], -q[3]])
 
 def quaternion_mult(q1, q2):
@@ -31,7 +31,7 @@ def quaternion_mult(q1, q2):
 def quaternion_rotate(q, v):
     q = quaternion_normalize(q)
     v_q = np.array([0.0, v[0], v[1], v[2]])
-    return quaternion_mult(quaternion_mult(q, v_q), quartenion_conj(q))[1:]
+    return quaternion_mult(quaternion_mult(q, v_q), quarternion_conj(q))[1:]
 
 def quaternion_normalize(q):
     return q / np.linalg.norm(q)
@@ -43,17 +43,17 @@ def angle_estimation(qA, qB):
     upper_world = quaternion_rotate(qA, bone_axis)
     forearm_world = quaternion_rotate(qB, bone_axis)
 
-    # Make unit vectors
+    # Normalize
     upper_world /= np.linalg.norm(upper_world)
     forearm_world /= np.linalg.norm(forearm_world)
 
-    # Arccos of dot product to get angle
+    # Dot product for magnitude
     dot = float(np.dot(upper_world, forearm_world))
     dot = np.clip(dot, -1.0, 1.0)
-    theta = np.arccos(dot)
-    theta_deg = np.degrees(theta)
+    angle_magnitude = np.arccos(dot)
+    angle_deg = np.degrees(angle_magnitude)
 
-    return theta_deg
+    return angle_deg
 
 # --- ElbowAngleNode Class ---
 class ElbowAngleNode(Node):
