@@ -10,11 +10,11 @@ def quaternion_array(q):
         q.orientation.w,
         q.orientation.x,
         q.orientation.y,
-        q.orientation.z    
+        q.orientation.z
     ], dtype=float)
     return q_array
 
-def quarternion_conj(q):
+def quaternion_conj(q):
     return np.array([q[0], -q[1], -q[2], -q[3]])
 
 def quaternion_mult(q1, q2):
@@ -31,25 +31,26 @@ def quaternion_mult(q1, q2):
 def quaternion_rotate(q, v):
     q = quaternion_normalize(q)
     v_q = np.array([0.0, v[0], v[1], v[2]])
-    return quaternion_mult(quaternion_mult(q, v_q), quarternion_conj(q))[1:]
+    return quaternion_mult(quaternion_mult(q, v_q), quaternion_conj(q))[1:]
 
 def quaternion_normalize(q):
     return q / np.linalg.norm(q)
 
-# --- Angle Estimation Function ---
-def angle_estimation(qA, qB):
-    # Transform to world
+# --- Angle Calculation Methods ---
+def vector_method(qA, qB):
+    # Define anatomical frame
     bone_axis = np.array([1.0, 0.0, 0.0])
+
+    # Project IMU frame to the defined anatomical frame
     upper_world = quaternion_rotate(qA, bone_axis)
     forearm_world = quaternion_rotate(qB, bone_axis)
 
-    # Normalize
-    upper_world /= np.linalg.norm(upper_world)
-    forearm_world /= np.linalg.norm(forearm_world)
+    # Normalize to preserve vectors unit length
+    upper_world = upper_world / np.linalg.norm(upper_world)
+    forearm_world = forearm_world / np.linalg.norm(forearm_world)
 
-    # Dot product for magnitude
-    dot = float(np.dot(upper_world, forearm_world))
-    dot = np.clip(dot, -1.0, 1.0)
+    # Dot product for angle magnitude
+    dot = np.clip(np.dot(upper_world, forearm_world), -1.0, 1.0)
     angle_magnitude = np.arccos(dot)
     angle_deg = np.degrees(angle_magnitude)
 
@@ -63,7 +64,9 @@ class ElbowAngleNode(Node):
         self.imu1_msg = None
         self.imu2_msg = None
         self.angle_start = None
-        
+        self.imu1_fresh = False
+        self.imu2_fresh = False
+
         # Subscribers
         self.sub_imu1 = self.create_subscription(Imu, '/imu1/data', self.imu1_callback, 10)
         self.sub_imu2 = self.create_subscription(Imu, '/imu2/data', self.imu2_callback, 10)
@@ -74,22 +77,29 @@ class ElbowAngleNode(Node):
 
     def imu1_callback(self, msg):
         self.imu1_msg = msg
+        self.imu1_fresh = True
         self.estimate_and_publish()
 
     def imu2_callback(self, msg):
         self.imu2_msg = msg
+        self.imu2_fresh = True
         self.estimate_and_publish()
 
     def estimate_and_publish(self):
         # Check if both messages have been received
-        if self.imu1_msg is None or  self.imu2_msg is None:
+        if not self.imu1_fresh or not self.imu2_fresh:
             return
-        
-        # Otherwise compute angle
-        qUpper = quaternion_array(self.imu1_msg)
-        qForearm = quaternion_array(self.imu2_msg)
 
-        angle_deg = angle_estimation(qUpper, qForearm)
+        self.imu1_fresh = False
+        self.imu2_fresh = False
+
+        # Otherwise standardize quaternion from imu messages
+        qUpper = quaternion_array(self.imu1_msg)   # IMU1 in upper arm
+        qForearm = quaternion_array(self.imu2_msg) # IMU2 in forearm
+
+        # Calculate angle
+        angle_deg = vector_method(qUpper, qForearm)
+
 
         if self.angle_start is None:
             self.angle_start = angle_deg
@@ -100,8 +110,8 @@ class ElbowAngleNode(Node):
 
         # Publish
         self.pub_angle.publish(msg)
-        self.get_logger().debug(f"Published elbow angle: {angle_deg:.2f} degrees")
-        
+        self.get_logger().info(f"Published elbow angle: {msg.data:.2f} degrees")
+
 def main():
     rclpy.init()
     node = ElbowAngleNode()
@@ -110,7 +120,7 @@ def main():
     except KeyboardInterrupt:
         pass
 
-    node.distroy_node()
+    node.destroy_node()
     rclpy.shutdown()
 
 if __name__ == '__main__':

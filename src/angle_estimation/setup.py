@@ -14,8 +14,8 @@ setup(
     ],
     install_requires=['setuptools', 'numpy'],
     zip_safe=True,
-    maintainer='james',
-    maintainer_email='walsh.j22@northeastern.edu',
+    maintainer='Phu',
+    maintainer_email='nguyen.p3@northeastern.edu',
     description='Angle Estimation Package',
     license='TODO: License declaration',
     extras_require={
@@ -25,7 +25,8 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'angle_estimation = angle_estimation.angle_estimation:main'
+            'relative_quat_method = angle_estimation.relative_quat_method:main',
+            'vector_method = angle_estimation.vector_method:main',
         ],
     },
 )

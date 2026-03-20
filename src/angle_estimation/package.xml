@@ -4,7 +4,7 @@
   <name>angle_estimation</name>
   <version>0.0.0</version>
   <description>Angle Estimation Package</description>
-  <maintainer email="walsh.j22@northeastern.edu">james</maintainer>
+  <maintainer email="nguyen.p3@northeastern.edu">Phu</maintainer>
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
