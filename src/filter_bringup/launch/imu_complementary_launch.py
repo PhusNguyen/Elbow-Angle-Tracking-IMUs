@@ -30,7 +30,7 @@ def generate_launch_description():
                 'use_mag': False,
                 'publish_tf': False,
                 'fixed_frame': 'odom',
-                'remove_gravity_vector': True,
+                # 'remove_gravity_vector': True,
             }],
             remappings=[
                 ('imu/data_raw', 'imu2/data_raw'),

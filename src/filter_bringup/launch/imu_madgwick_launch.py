@@ -8,17 +8,17 @@ def generate_launch_description():
         Node(
             package='imu_filter_madgwick',
             executable='imu_filter_madgwick_node',
-            name='imu1_filter',
+            name='madgwick_imu1',
             parameters=[{
                 'use_mag': False,
-                'publish_tf': False,
-                'fixed_frame': 'odom',
+                'publish_tf': True,
+                'fixed_frame': 'world',
                 'remove_gravity_vector': True,
             }],
             remappings=[
                 ('imu/data_raw', 'imu1/data_raw'),
                 ('imu/mag', 'imu1/mag'),
-                ('imu/data', 'imu1/data'),  # filtered output
+                ('imu/data', 'imu1/data'), # Output topic
             ]
         ),
         # Filter for IMU2
@@ -28,8 +28,8 @@ def generate_launch_description():
             name='imu2_filter',
             parameters=[{
                 'use_mag': False,
-                'publish_tf': False,
-                'fixed_frame': 'odom',
+                'publish_tf': True,
+                'fixed_frame': 'world',
                 'remove_gravity_vector': True,
             }],
             remappings=[
