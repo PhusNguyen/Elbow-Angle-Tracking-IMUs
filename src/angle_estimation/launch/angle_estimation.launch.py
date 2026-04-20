@@ -4,8 +4,8 @@ from launch_ros.actions import Node
 def generate_launch_description():
     angle_estimation_node = Node(
         package='angle_estimation',
-        executable='relative_quat_method',
-        name='relative_quat_method',
+        executable='angle_estimation',
+        name='angle_estimation',
         output='screen',
     )
 

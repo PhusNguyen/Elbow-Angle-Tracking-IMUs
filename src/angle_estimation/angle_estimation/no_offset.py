@@ -106,7 +106,7 @@ class ElbowAngleNode(Node):
 
         self.imu1_fresh = False
         self.imu2_fresh = False
-        
+
         # Otherwise standardize quaternion from imu messages
         qUpper = quaternion_array(self.imu1_msg)   # IMU1 in upper arm
         qForearm = quaternion_array(self.imu2_msg) # IMU2 in forearm
@@ -114,23 +114,18 @@ class ElbowAngleNode(Node):
         # Calculate angle
         angle_deg = relative_quat_method(qUpper, qForearm)
 
-        if self.angle_start is None:
-            self.angle_start = angle_deg
-
-        # Create message to publish
+        # if self.angle_start is None:
+        #     self.angle_start = angle_deg
+        #
+        # # Create message to publish
         msg = Float32()
-
-        # Keep angle range 0-180
-        angle = np.abs(self.angle_start - angle_deg)
-        if (angle > 180):
-            msg.data = float(np.abs(angle - 360))
-        else:
-            msg.data = float(angle)
+        # msg.data = float(np.abs(self.angle_start - angle_deg))  # Calibrates the angle to start at 0 degrees
+        msg.data = float(angle_deg)
 
         # Publish
         self.pub_angle.publish(msg)
         self.get_logger().info(f"Published elbow angle: {msg.data:.2f} degrees")
-        
+
 def main():
     rclpy.init()
     node = ElbowAngleNode()

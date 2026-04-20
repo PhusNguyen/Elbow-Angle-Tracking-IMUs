@@ -27,6 +27,7 @@ setup(
         'console_scripts': [
             'relative_quat_method = angle_estimation.relative_quat_method:main',
             'vector_method = angle_estimation.vector_method:main',
+            'no_offset_rel_quat = angle_estimation.no_offset:main',
         ],
     },
 )
