@@ -12,17 +12,20 @@
 #define IMU1_ADDR 0x4B
 #define IMU2_ADDR 0x4A
 
-// global parameters
+// Global parameters
 unsigned long sample_count = 0;
 unsigned long boot_time = 0;
 unsigned long last_report_time = 0;
 
+// IMU object
 BNO080 bno1;
 BNO080 bno2;
 
+// Publishers
 rcl_publisher_t imu1_publisher;
 rcl_publisher_t imu2_publisher;
 
+// Pub message buffer
 sensor_msgs__msg__Imu imu1_msg;
 sensor_msgs__msg__Imu imu2_msg;
 
@@ -39,6 +42,7 @@ rcl_timer_t timer;
   if (curr - prev >= MS) { prev = curr; X; } \
 } while(0)
 
+// Define machine states for monitoring
 enum State {
   WAITING_FOR_AGENT,
   AGENT_AVAILABLE,
@@ -46,9 +50,9 @@ enum State {
   AGENT_DISCONNECTED
 } state;
 
-// LED blink patterns for different error states
+// Helper function - LED blink patterns for different error states
 void error_blink(int on_ms, int off_ms) {
-  while (1) {
+  for (int i = 0; i < 5; i++) {
     digitalWrite(LED_BUILTIN, HIGH);
     delay(on_ms);
     digitalWrite(LED_BUILTIN, LOW);
@@ -56,6 +60,7 @@ void error_blink(int on_ms, int off_ms) {
   }
 }
 
+// Helper function - Initialize IMU message in ROS standard msg
 void init_imu_msg(sensor_msgs__msg__Imu *msg, const char *frame_id) {
   msg->header.frame_id.data = (char*)frame_id;
   msg->header.frame_id.size = strlen(frame_id);
@@ -66,6 +71,7 @@ void init_imu_msg(sensor_msgs__msg__Imu *msg, const char *frame_id) {
   msg->linear_acceleration_covariance[0] = -1.0;
 }
 
+// Helper function - Fill and publish IMU data with time stamp
 void fill_and_publish(
   rcl_publisher_t *pub,
   sensor_msgs__msg__Imu *msg,
@@ -83,6 +89,7 @@ void fill_and_publish(
   rcl_publish(pub, msg, NULL);
 }
 
+// Helper function - ROS pub loop
 void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
   RCLC_UNUSED(last_call_time);
   if (timer == NULL) return;
@@ -99,18 +106,7 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time) {
   }
 }
 
-void destroy_entities() {
-  rmw_context_t *rmw_context = rcl_context_get_rmw_context(&support.context);
-  (void)rmw_uros_set_context_entity_destroy_session_timeout(rmw_context, 0);
-
-  rcl_publisher_fini(&imu1_publisher, &node);
-  rcl_publisher_fini(&imu2_publisher, &node);
-  rcl_timer_fini(&timer);
-  rclc_executor_fini(&executor);
-  rcl_node_fini(&node);
-  rclc_support_fini(&support);
-}
-
+// Helper function - Create all ROS entities
 bool create_entities() {
   allocator = rcl_get_default_allocator();
 
@@ -136,13 +132,28 @@ bool create_entities() {
     &timer, &support,
     RCL_MS_TO_NS(25),
     timer_callback));
-
+  
+  // Executor handles 1 timer + 1 subscription = 2
   RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
   RCCHECK(rclc_executor_add_timer(&executor, &timer));
 
   return true;
 }
 
+// Helper function - Destroy all ROS created entities
+void destroy_entities() {
+  rmw_context_t *rmw_context = rcl_context_get_rmw_context(&support.context);
+  (void)rmw_uros_set_context_entity_destroy_session_timeout(rmw_context, 0);
+
+  rcl_publisher_fini(&imu1_publisher, &node);
+  rcl_publisher_fini(&imu2_publisher, &node);
+  rcl_timer_fini(&timer);
+  rclc_executor_fini(&executor);
+  rcl_node_fini(&node);
+  rclc_support_fini(&support);
+}
+
+// Set up Microcontroller and Sensors
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
 
@@ -162,25 +173,28 @@ void setup() {
     error_blink(250, 250);
   }
 
+  // IMU reading rate
   bno1.enableRotationVector(25);
   bno2.enableRotationVector(25);
 
   init_imu_msg(&imu1_msg, "imu1_frame");
   init_imu_msg(&imu2_msg, "imu2_frame");
 
-  // state init
+  // State init
   state = WAITING_FOR_AGENT;
-  // 
+
+  // health check time 
   boot_time = millis();
   last_report_time = millis();
 }
 
+// Main loop
 void loop() {
   switch (state) {
 
     case WAITING_FOR_AGENT:
       EXECUTE_EVERY_N_MS(500, {
-        digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN)); // check to change this led mode
+        digitalWrite(LED_BUILTIN, HIGH);
         state = (RMW_RET_OK == rmw_uros_ping_agent(10, 1))
           ? AGENT_AVAILABLE : WAITING_FOR_AGENT;
       });
@@ -195,15 +209,16 @@ void loop() {
       digitalWrite(LED_BUILTIN, LOW);
 
       // Let executor handle timer scheduling directly
-      rclc_executor_spin_some(&executor, RCL_MS_TO_NS(10));
+      rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
 
+      // Check connection every 200ms
       EXECUTE_EVERY_N_MS(200, {
         if (RMW_RET_OK != rmw_uros_ping_agent(10, 1)) {
           state = AGENT_DISCONNECTED;
         }
       });
 
-      // Health check every 1 second
+      // Health check every second
       {
         unsigned long now = millis();
         if (now - last_report_time >= 1000) {
