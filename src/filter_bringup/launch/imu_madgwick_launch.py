@@ -10,7 +10,7 @@ def generate_launch_description():
             executable='imu_filter_madgwick_node',
             name='madgwick_imu1',
             parameters=[{
-                'use_mag': False,
+                'use_mag': True,
                 'publish_tf': True,
                 'fixed_frame': 'world',
                 'remove_gravity_vector': True,
@@ -27,7 +27,7 @@ def generate_launch_description():
             executable='imu_filter_madgwick_node',
             name='imu2_filter',
             parameters=[{
-                'use_mag': False,
+                'use_mag': True,
                 'publish_tf': True,
                 'fixed_frame': 'world',
                 'remove_gravity_vector': True,
