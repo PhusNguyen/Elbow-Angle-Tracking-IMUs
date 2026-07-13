@@ -3,6 +3,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import Imu
 from std_msgs.msg import Float32
 import numpy as np
+import math
 
 # --- Quaternion Helper Functions ---
 def quaternion_array(q):
@@ -28,52 +29,48 @@ def quaternion_mult(q1, q2):
         w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2,
     ])
 
+def quaternion_normalize(q):
+    return q / np.linalg.norm(q)
+
 def quaternion_rotate(q, v):
     q = quaternion_normalize(q)
     v_q = np.array([0.0, v[0], v[1], v[2]])
     return quaternion_mult(quaternion_mult(q, v_q), quaternion_conj(q))[1:]
 
-def quaternion_normalize(q):
-    return q / np.linalg.norm(q)
+def quat_to_euler(q):
+    w = q[0]
+    x = q[1]
+    y = q[2]
+    z = q[3]
 
-# --- Angle Calculation Methods ---
-def relative_quat_method(qA, qB):
-    # Relatie rotation from upper arm to forearm
+    t0 = +2.0 * (w * x + y * z)
+    t1 = +1.0 - 2.0 * (x * x + y * y)
+    roll_x = np.degrees(math.atan2(t0, t1))
+
+    t2 = +2.0 * (w * y - z * x)
+    t2 = +1.0 if t2 > +1.0 else t2
+    t2 = -1.0 if t2 < -1.0 else t2
+    pitch_y = np.degrees(math.asin(t2))
+
+    t3 = +2.0 * (w * z + x * y)
+    t4 = +1.0 - 2.0 * (y * y + z * z)
+    yaw_z = np.degrees(math.atan2(t3, t4))
+
+    return roll_x, pitch_y, yaw_z
+
+# --- Angle Calculation ---
+def relative_quat_EAD(qA, qB):
+    # Relative rotation from upper arm to forearm
     q_rel = quaternion_mult(quaternion_conj(qA), qB)
     q_rel = quaternion_normalize(q_rel)
 
-    # --- Manual Alignment Sensor-to-Segment Calibration --- #
-    # Define flexion axis (the axis the elbow rotates around)
-    flexion_axis = np.array([0.0, 0.0, 1.0])
-
-    # Project the quaternion's vector part onto the flexion axis
-    # This extracts only the rotation component around that axis
-    projection = np.dot(q_rel[1:], flexion_axis)
-
-    # Reconstruct a quaternion that only rotates around the flexion axis
-    angle = 2.0 * np.arctan2(abs(projection), q_rel[0])
-
-    # Sign from the projection gives direction (flexion vs extension)
-    if projection < 0:
-        angle = -angle
-
-    # # --- Functional Sensor-to-Segment Calibration --- #
-    # # Convert to axis-angle
-    # # The angle is the total rotation between the two segments
-    # angle = 2.0 * np.arccos(np.clip(abs(q_rel[0]), 0.0, 1.0))
-    #
-    # # The axis tells you WHICH direction the rotation is in
-    # axis = q_rel[1:]
-    # norm = np.linalg.norm(axis)
-    # if norm > 1e-6:
-    #     axis = axis / norm
-
-    return np.degrees(angle)
+    # Euler Angle Decomposition
+    return quat_to_euler(q_rel)
 
 # --- ElbowAngleNode Class ---
 class ElbowAngleNode(Node):
     def __init__(self):
-        # Init
+        # __init__
         super().__init__('angle_estimation')
         self.imu1_msg = None
         self.imu2_msg = None
@@ -106,31 +103,25 @@ class ElbowAngleNode(Node):
 
         self.imu1_fresh = False
         self.imu2_fresh = False
-        
+
         # Otherwise standardize quaternion from imu messages
-        qUpper = quaternion_array(self.imu1_msg)   # IMU1 in upper arm
-        qForearm = quaternion_array(self.imu2_msg) # IMU2 in forearm
+        qUpper = quaternion_array(self.imu1_msg)
+        qForearm = quaternion_array(self.imu2_msg)
 
         # Calculate angle
-        angle_deg = relative_quat_method(qUpper, qForearm)
+        roll, pitch, yaw = relative_quat_EAD(qUpper, qForearm)
 
         if self.angle_start is None:
-            self.angle_start = angle_deg
+            self.angle_start = yaw
 
         # Create message to publish
         msg = Float32()
 
-        # Keep angle range 0-180
-        angle = np.abs(self.angle_start - angle_deg)
-        if (angle > 180):
-            msg.data = float(np.abs(angle - 360))
-        else:
-            msg.data = float(angle)
-
         # Publish
+        msg.data = np.abs(yaw - self.angle_start)
         self.pub_angle.publish(msg)
-        self.get_logger().info(f"Published elbow angle: {msg.data:.2f} degrees")
-        
+        self.get_logger().info(f"Publish Roll: {roll:.2f}, Pitch: {pitch:.2f}, Yaw: {msg.data:.2f}")
+
 def main():
     rclpy.init()
     node = ElbowAngleNode()

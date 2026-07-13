@@ -36,9 +36,9 @@ def quaternion_rotate(q, v):
 def quaternion_normalize(q):
     return q / np.linalg.norm(q)
 
-# --- Angle Calculation Methods ---
+# --- Angle Calculation ---
 def relative_quat_method(qA, qB):
-    # Relatie rotation from upper arm to forearm
+    # Relative rotation from upper arm to forearm
     q_rel = quaternion_mult(quaternion_conj(qA), qB)
     q_rel = quaternion_normalize(q_rel)
 
@@ -51,7 +51,7 @@ def relative_quat_method(qA, qB):
     projection = np.dot(q_rel[1:], flexion_axis)
 
     # Reconstruct a quaternion that only rotates around the flexion axis
-    angle = 2.0 * np.arctan2(abs(projection), q_rel[0])
+    angle = 2.0 * np.arctan2(np.abs(projection), q_rel[0])
 
     # Sign from the projection gives direction (flexion vs extension)
     if projection < 0:
@@ -114,18 +114,23 @@ class ElbowAngleNode(Node):
         # Calculate angle
         angle_deg = relative_quat_method(qUpper, qForearm)
 
-        # if self.angle_start is None:
-        #     self.angle_start = angle_deg
-        #
-        # # Create message to publish
+        if self.angle_start is None:
+            self.angle_start = angle_deg
+
+        # Create message to publish
         msg = Float32()
-        # msg.data = float(np.abs(self.angle_start - angle_deg))  # Calibrates the angle to start at 0 degrees
-        msg.data = float(angle_deg)
+
+        # Keep angle range 0-180
+        angle = np.abs(self.angle_start - angle_deg)
+        if (angle > 180):
+            msg.data = float(np.abs(angle - 360))
+        else:
+            msg.data = float(angle)
 
         # Publish
         self.pub_angle.publish(msg)
         self.get_logger().info(f"Published elbow angle: {msg.data:.2f} degrees")
-
+        
 def main():
     rclpy.init()
     node = ElbowAngleNode()

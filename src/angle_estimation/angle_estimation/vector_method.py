@@ -46,8 +46,8 @@ def vector_method(qA, qB):
     forearm_world = quaternion_rotate(qB, bone_axis)
 
     # Normalize to preserve vectors unit length
-    upper_world = upper_world / np.linalg.norm(upper_world)
-    forearm_world = forearm_world / np.linalg.norm(forearm_world)
+    upper_world = quaternion_normalize(upper_world)
+    forearm_world = quaternion_normalize(forearm_world)
 
     # Dot product for angle magnitude
     dot = np.clip(np.dot(upper_world, forearm_world), -1.0, 1.0)
