@@ -1,8 +1,10 @@
 # Overview
 
-A wearable system that estimates elbow flexion angle in real time from two IMUs, one on the upper arm and one on the forearm. An ESP32 publishes raw IMU data over micro-ROS to a ROS 2 Jazzy host, where a sensor fusion node estimates each segment's orientation and an angle estimation node computes the joint angle by modeling the arm as a two-link kinematic chain with D-H parameters.
-Three fusion algorithms were implemented and benchmarked (Complementary filter, Madgwick, Extended Kalman Filter). Madgwick was selected for the best accuracy and stability. The system was validated in controlled flat-surface tests and on human arm trials.
-The D-H method was selected for the final system: by constraining the estimate to the elbow's two anatomical degrees of freedom, it discards the residual rotation that carries pronation, mounting misalignment, and heading drift instead of propagating it into the output.
+A wearable system that estimates elbow flexion angle in real time from two IMUs, one on the upper arm and one on the forearm. An ESP32 publishes raw IMU data over micro-ROS to a ROS 2 Jazzy host, where a sensor fusion node estimates each segment's orientation and an angle estimation node extracts the joint angle from the relative rotation.
+
+Both stages were treated as design choices and evaluated. Three fusion algorithms were compared (Complementary, Madgwick, Extended Kalman Filter), with Madgwick selected for accuracy and stability. Four angle extraction methods were then compared on the same orientation input; the D-H method, which models the arm as a two-link kinematic chain, proved most stable and was selected. By constraining the estimate to the elbow's two anatomical degrees of freedom, it discards the residual rotation carrying pronation, mounting misalignment, and heading drift instead of propagating it into the output.
+
+The system was validated in controlled flat-surface tests and on human arm trials.
 
 # Hardware
 
@@ -21,7 +23,8 @@ The D-H method was selected for the final system: by constraining the estimate t
 
 # Angle estimation methods
 
-Four methods for extracting elbow flexion from the same pair of segment orientations are implemented in src/angle_estimation. 
+Four methods for extracting elbow flexion from the same pair of segment orientations are implemented in src/angle_estimation.
+
 | Method | Approach | Assumed DOF |
 |-------|------------------|-----|
 | dh_method | Decomposes the relative rotation as Rz(θ)·Rx(α), a two-link D-H model | 2 |
