@@ -1,6 +1,22 @@
-# Elbow-Angle-Tracking-Using-Wearable-IMUs
+# Overview
 
-This project developed a wearable elbow angle estimation system using two IMU sensors and an ESP32 microcontroller, communicating via Micro-ROS with ROS 2. After comparing three sensor fusion techniques, the Madgwick filter was selected for its superior accuracy and stability. The system was validated through both controlled flat surface experiments and human arm trials.
+A wearable system that estimates elbow flexion angle in real time from two IMUs, one on the upper arm and one on the forearm. An ESP32 publishes raw IMU data over micro-ROS to a ROS 2 Jazzy host, where a sensor fusion node estimates each segment's orientation and an angle estimation node computes the joint angle by modeling the arm as a two-link kinematic chain with D-H parameters.
+Three fusion algorithms were implemented and benchmarked (Complementary filter, Madgwick, Extended Kalman Filter). Madgwick was selected for the best accuracy and stability. The system was validated in controlled flat-surface tests and on human arm trials.
+
+# Hardware
+
+| Component | Notes |
+|-------|----------|
+| ESP32 | micro-ROS client, serial transport (wifi transport will be updated in the next release) |
+| 2xIMU BNO085 | upper arm and forearm placement |
+| Straps / sleeve | wearable mounting |
+
+# Repository structure
+- MicroROS_Jazzy_ESP32/ — firmware for the ESP32 micro-ROS client
+- src/ — ROS 2 packages (filter_bringup, angle_estimation)
+- analysis_scripts/ — filter comparison and error analysis
+- rosbag_file/ — recorded trials
+- figures/ — plots and system diagrams
 
 # Docker Setup Guide (Fedora 41)
 
@@ -109,4 +125,4 @@ ros2 launch angle_estimation angle_estimation.launch.py
 |-------|----------|
 | `failed to connect to docker API` | Run `sudo systemctl start docker` |
 | `cannot open display` | Run `sudo xhost +local:docker` |
-| `Container is not running` | Run `sudo docker start microros_jazzy4` |
+| `Container is not running` | Run `sudo docker start microros_jazzy` |
