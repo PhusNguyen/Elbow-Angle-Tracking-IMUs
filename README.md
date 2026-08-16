@@ -2,6 +2,7 @@
 
 A wearable system that estimates elbow flexion angle in real time from two IMUs, one on the upper arm and one on the forearm. An ESP32 publishes raw IMU data over micro-ROS to a ROS 2 Jazzy host, where a sensor fusion node estimates each segment's orientation and an angle estimation node computes the joint angle by modeling the arm as a two-link kinematic chain with D-H parameters.
 Three fusion algorithms were implemented and benchmarked (Complementary filter, Madgwick, Extended Kalman Filter). Madgwick was selected for the best accuracy and stability. The system was validated in controlled flat-surface tests and on human arm trials.
+The D-H method was selected for the final system: by constraining the estimate to the elbow's two anatomical degrees of freedom, it discards the residual rotation that carries pronation, mounting misalignment, and heading drift instead of propagating it into the output.
 
 # Hardware
 
@@ -17,6 +18,18 @@ Three fusion algorithms were implemented and benchmarked (Complementary filter, 
 - analysis_scripts/ — filter comparison and error analysis
 - rosbag_file/ — recorded trials
 - figures/ — plots and system diagrams
+
+# Angle estimation methods
+
+Four methods for extracting elbow flexion from the same pair of segment orientations are implemented in src/angle_estimation. 
+| Method | Approach | Assumed DOF |
+|-------|------------------|-----|
+| dh_method | Decomposes the relative rotation as Rz(θ)·Rx(α), a two-link D-H model | 2 |
+| relative_quat_EAD | ZYX Euler decomposition of the relative quaternion | 3 |
+| relative_quat_projection | Swing-twist decomposition about a fixed flexion axis | 3 |
+| vector_method | Angle between segment axes rotated into the world frame | 3 |
+
+The D-H method proved the most stable and was selected for the final system. It is the only method that constrains the estimate to the elbow's two anatomical degrees of freedom (flexion and carrying angle); the remaining rotational freedom, which carries pronation, mounting misalignment, and heading drift, is discarded rather than propagated into the output. The three unconstrained methods each expose a distinct failure mode: Euler decomposition couples axes and degenerates near gimbal lock, the projection method is sensitive to sensor-to-segment misalignment, and the vector method loses precision near full extension where arccos is ill-conditioned.
 
 # Docker Setup Guide (Fedora 41)
 
